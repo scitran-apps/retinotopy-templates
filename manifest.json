@@ -1,0 +1,32 @@
+{
+	"name": "retinotopy-templates",
+	"label": "Retinotopy Templates (Benson, et. al.)",
+	"description": "Applies the V1, V2, and V3 anatomical template of retinotopy from Benson et al. (2014) as well as the ROI template of Wang et al. (2015). Currently this does not use the original version of the Benson et al. template but rather an updated version that has also been published on the website indicated in the original paper.",
+	"maintainer": "Michael Perry <lmperry@stanford.edu>",
+	"author": "Noah C. Benson <nben@nyu.edu>",
+	"url": "https://github.com/noahbenson/neuropythy",
+	"source": "https://github.com/scitran-apps/retinotopy-templates",
+	"license": "GPL-2.0",
+	"flywheel": "0",
+	"version": "0.0.1",
+	"inputs": {
+		"anatomical": {
+			"base": "file",
+			"type": {
+				"enum": [
+					"nifti"
+				]
+			}
+		}
+	},
+	"config": {
+		"subject_id": {
+				"description": "Desired subject ID. This will be used to name the resulting freesurfer output directory.",
+				"default": "retinotopy_templates_subject",
+				"type": "string"
+			}
+	},
+	"custom": {
+		"docker-image": "scitran/retinotopy-templates"
+	}
+}

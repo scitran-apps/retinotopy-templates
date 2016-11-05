@@ -1,0 +1,177 @@
+#! /bin/bash
+#
+# Run occipital-atlas Gear
+# Built to flywheel-v0 spec.
+#
+
+GEAR=retinotopy-templates
+REPO=scitran
+CONTAINER="[${REPO}/$GEAR]"
+
+echo -e "$CONTAINER  Initiated"
+set -e
+
+###############################################################################
+# Configure Freesurfer ENV
+
+export OS Linux=
+export FS_OVERRIDE=0
+export FIX_VERTEX_AREA=
+export SUBJECTS_DIR=/output
+export FSF_OUTPUT_FORMAT=nii.gz
+export MNI_DIR=/opt/freesurfer/mni
+export LOCAL_DIR=/opt/freesurfer/local
+export FREESURFER_HOME=/opt/freesurfer
+export FSFAST_HOME=/opt/freesurfer/fsfast
+export MINC_BIN_DIR=/opt/freesurfer/mni/bin
+export MINC_LIB_DIR=/opt/freesurfer/mni/lib
+export MNI_DATAPATH=/opt/freesurfer/mni/data
+export FMRI_ANALYSIS_DIR=/opt/freesurfer/fsfast
+export PERL5LIB=/opt/freesurfer/mni/lib/perl5/5.8.5
+export MNI_PERL5LIB=/opt/freesurfer/mni/lib/perl5/5.8.5
+export PATH=/opt/freesurfer/bin:/opt/freesurfer/fsfast/bin:/opt/freesurfer/tktools:/opt/freesurfer/mni/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# Configure bashrc to source FreeSurferEnv.sh
+/bin/bash -c 'source $FREESURFER_HOME/FreeSurferEnv.sh &>/dev/null'
+
+export SUBJECTS_DIR=/opt/freesurfer/subjects
+
+###############################################################################
+# Configure paths
+
+FLYWHEEL_BASE=/flywheel/v0
+OUTPUT_DIR=$FLYWHEEL_BASE/output
+INPUT_DIR=$FLYWHEEL_BASE/input
+ANAT_DIR=$INPUT_DIR/anatomical # Must match input from the manifest
+CONFIG_FILE=${FLYWHEEL_BASE}/config.json
+LOG_FILE=$OUTPUT_DIR/retinotopy-templates_log.txt
+
+SUBJECT_ID=`${FLYWHEEL_BASE}/parse_config.py -s`
+RECON_ALL_OPTS=`${FLYWHEEL_BASE}/parse_config.py -o`
+
+# Make the directories
+WORK_DIR=/${SUBJECT_ID}
+mkdir $WORK_DIR
+
+ANATOMICAL=`find ${ANAT_DIR}/* -name "*.nii*"`
+
+###############################################################################
+# Freesurfer
+
+# Run recon-all
+time recon-all -i ${ANATOMICAL} -subjid ${SUBJECT_ID} ${RECON_ALL_OPTS} -all 2>&1 | tee $LOG_FILE
+
+# Invert the right hemisphere
+time xhemireg --s ${SUBJECT_ID}
+
+# Register the left hemisphere to fsaverage_sym
+time surfreg --s ${SUBJECT_ID} --t fsaverage_sym --lh
+
+# Register the inverted right hemisphere to fsaverage_sym
+time surfreg --s ${SUBJECT_ID} --t fsaverage_sym --lh --xhemi
+
+
+###############################################################################
+# RUN the benson algorithm
+
+echo 'Running Benson Algorithm...'
+time /opt/share/retinotopy-template/run_apply_template.sh ${SUBJECT_ID} 2>&1 | tee $LOG_FILE
+
+###############################################################################
+# Orientation to T1
+
+echo 'Reorienting outputs to scanner space....'
+
+# Make volume files oriented identically to the original T1 used
+# with FreeSurfers recon-all command (scanner orientation).
+mri_convert -rl "$SUBJECTS_DIR/${SUBJECT_ID}/mri/rawavg.mgz" \
+                "$SUBJECTS_DIR/${SUBJECT_ID}/mri/native.template_angle.mgz" \
+                "$SUBJECTS_DIR/${SUBJECT_ID}/mri/scanner.template_angle.mgz" \
+                2>&1 | tee -a $LOG_FILE
+
+mri_convert -rl "$SUBJECTS_DIR/${SUBJECT_ID}/mri/rawavg.mgz" \
+                "$SUBJECTS_DIR/${SUBJECT_ID}/mri/native.template_eccen.mgz" \
+                "$SUBJECTS_DIR/${SUBJECT_ID}/mri/scanner.template_eccen.mgz" \
+                2>&1 | tee -a $LOG_FILE
+
+mri_convert -rl "$SUBJECTS_DIR/${SUBJECT_ID}/mri/rawavg.mgz" \
+                "$SUBJECTS_DIR/${SUBJECT_ID}/mri/native.template_areas.mgz" \
+                "$SUBJECTS_DIR/${SUBJECT_ID}/mri/scanner.template_areas.mgz" \
+                2>&1 | tee -a $LOG_FILE
+
+mri_convert -rl "$SUBJECTS_DIR/${SUBJECT_ID}/mri/rawavg.mgz" \
+                "$SUBJECTS_DIR/${SUBJECT_ID}/mri/native.template_atlas.mgz" \
+                "$SUBJECTS_DIR/${SUBJECT_ID}/mri/scanner.template_atlas.mgz" \
+                2>&1 | tee -a $LOG_FILE
+
+###############################################################################
+# Convert the output files to nifti and copy to output directory
+
+echo 'Converting outputs to nifti...'
+
+# Surfaces in subject/surf
+SURF_DIR=${SUBJECTS_DIR}/${SUBJECT_ID}/surf
+surf_mgz_files='lh.template_angle.mgz
+                lh.template_eccen.mgz
+                lh.template_areas.mgz
+                lh.wang2015_atlas.mgz
+                rh.template_angle.mgz
+                rh.template_eccen.mgz
+                rh.template_areas.mgz
+                rh.wang2015_atlas.mgz'
+
+for i in $surf_mgz_files; do
+  mri_convert -i ${SURF_DIR}/$i -o ${OUTPUT_DIR}/`basename $i .mgz`.nii.gz 2>&1 | tee -a $LOG_FILE
+done
+
+# Volumes in subject/mri:
+MRI_DIR=${SUBJECTS_DIR}/${SUBJECT_ID}/mri
+mri_mgz_files='native.template_angle.mgz
+               native.template_eccen.mgz
+               native.template_areas.mgz
+               native.wang2015_atlas.mgz
+               scanner.template_angle.mgz
+               scanner.template_eccen.mgz
+               scanner.template_areas.mgz
+               scanner.wang2015_atlas.mgz'
+
+for i in $mri_mgz_files; do
+  mri_convert -i ${MRI_DIR}/$i -o ${OUTPUT_DIR}/`basename $i .mgz`.nii.gz 2>&1 | tee -a $LOG_FILE
+done
+
+
+###############################################################################
+# Compress Recon-all output directory
+
+echo "Compressing outputs..."
+
+# Set file permissions prior to compression
+chmod -R 777 ${WORK_DIR}
+zip -r /${OUTPUT_DIR}/${GEAR}_${SUBJECT_ID}`date +"_D%m-%d-%yT%H-%M"`.zip ${WORK_DIR}
+
+
+###############################################################################
+# FINISH
+
+# Get a list of the files in the output directory
+outputs=$(find $OUTPUT_DIR/* -maxdepth 0 -type f)
+
+# If outputs exist, generate metadata, and exit
+if [[ -z $outputs ]]
+then
+  echo "$CONTAINER  FAILED: No results found in output directory... Exiting"
+  exit 1
+else
+
+  # Create metadata json file ($OUTPUT_DIR/.metadata.json)
+  $FLYWHEEL_BASE/metadata_create.py $OUTPUT_DIR $CONTAINER
+
+  # Set permissions for outputs (prevent root only r/w)
+  chmod -R 777 $OUTPUT_DIR
+
+  # End
+  echo -e "$CONTAINER  Wrote: `ls -1`"
+  echo -e "$CONTAINER  Done!"
+fi
+
+exit 0
