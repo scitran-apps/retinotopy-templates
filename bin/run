@@ -50,8 +50,7 @@ RECON_ALL_OPTS=`${FLYWHEEL_BASE}/parse_config.py -o`
 
 # Make and link the directory
 WORK_DIR=/${SUBJECT_ID}
-mkdir $WORK_DIR
-ln -s /${1} ${SUBJECTS_DIR}/
+ln -s ${SUBJECTS_DIR}/${SUBJECT_ID} ${WORK_DIR}
 
 ANATOMICAL=`find ${ANAT_DIR}/* -name "*.nii*"`
 
