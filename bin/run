@@ -17,7 +17,6 @@ set -e
 export OS Linux=
 export FS_OVERRIDE=0
 export FIX_VERTEX_AREA=
-export SUBJECTS_DIR=/output
 export FSF_OUTPUT_FORMAT=nii.gz
 export MNI_DIR=/opt/freesurfer/mni
 export LOCAL_DIR=/opt/freesurfer/local
@@ -49,9 +48,10 @@ LOG_FILE=$OUTPUT_DIR/retinotopy-templates_log.txt
 SUBJECT_ID=`${FLYWHEEL_BASE}/parse_config.py -s`
 RECON_ALL_OPTS=`${FLYWHEEL_BASE}/parse_config.py -o`
 
-# Make the directories
+# Make and link the directory
 WORK_DIR=/${SUBJECT_ID}
 mkdir $WORK_DIR
+ln -s /${1} ${SUBJECTS_DIR}/
 
 ANATOMICAL=`find ${ANAT_DIR}/* -name "*.nii*"`
 
@@ -62,20 +62,20 @@ ANATOMICAL=`find ${ANAT_DIR}/* -name "*.nii*"`
 time recon-all -i ${ANATOMICAL} -subjid ${SUBJECT_ID} ${RECON_ALL_OPTS} -all 2>&1 | tee $LOG_FILE
 
 # Invert the right hemisphere
-time xhemireg --s ${SUBJECT_ID}
+time xhemireg --s ${SUBJECT_ID} 2>&1 | tee -a $LOG_FILE
 
 # Register the left hemisphere to fsaverage_sym
-time surfreg --s ${SUBJECT_ID} --t fsaverage_sym --lh
+time surfreg --s ${SUBJECT_ID} --t fsaverage_sym --lh 2>&1 | tee -a $LOG_FILE
 
 # Register the inverted right hemisphere to fsaverage_sym
-time surfreg --s ${SUBJECT_ID} --t fsaverage_sym --lh --xhemi
+time surfreg --s ${SUBJECT_ID} --t fsaverage_sym --lh --xhemi 2>&1 | tee -a $LOG_FILE
 
 
 ###############################################################################
 # RUN the benson algorithm
 
 echo 'Running Benson Algorithm...'
-time /opt/share/retinotopy-template/run_apply_template.sh ${SUBJECT_ID} 2>&1 | tee $LOG_FILE
+time /opt/share/retinotopy-template/run_apply_template.sh ${SUBJECT_ID} 2>&1 | tee -a $LOG_FILE
 
 ###############################################################################
 # Orientation to T1
@@ -104,6 +104,11 @@ mri_convert -rl "$SUBJECTS_DIR/${SUBJECT_ID}/mri/rawavg.mgz" \
                 "$SUBJECTS_DIR/${SUBJECT_ID}/mri/scanner.template_atlas.mgz" \
                 2>&1 | tee -a $LOG_FILE
 
+mri_convert -rl "$SUBJECTS_DIR/${SUBJECT_ID}/mri/rawavg.mgz" \
+                "$SUBJECTS_DIR/${SUBJECT_ID}/mri/native.wang2015_atlas.mgz" \
+                "$SUBJECTS_DIR/${SUBJECT_ID}/mri/scanner.wang2015_atlas.mgz" \
+                2>&1 | tee -a $LOG_FILE
+
 ###############################################################################
 # Convert the output files to nifti and copy to output directory
 
@@ -121,7 +126,7 @@ surf_mgz_files='lh.template_angle.mgz
                 rh.wang2015_atlas.mgz'
 
 for i in $surf_mgz_files; do
-  mri_convert -i ${SURF_DIR}/$i -o ${OUTPUT_DIR}/`basename $i .mgz`.nii.gz 2>&1 | tee -a $LOG_FILE
+  mri_convert -i ${SURF_DIR}/$i -o ${OUTPUT_DIR}/`basename $i .mgz`.gii.gz 2>&1 | tee -a $LOG_FILE
 done
 
 # Volumes in subject/mri:
@@ -147,7 +152,8 @@ echo "Compressing outputs..."
 
 # Set file permissions prior to compression
 chmod -R 777 ${WORK_DIR}
-zip -r /${OUTPUT_DIR}/${GEAR}_${SUBJECT_ID}`date +"_D%m-%d-%yT%H-%M"`.zip ${WORK_DIR}
+cd /
+zip -r /${OUTPUT_DIR}/${GEAR}_${SUBJECT_ID}`date +"_D%m-%d-%yT%H-%M"`.zip ${SUBJECT_ID}
 
 
 ###############################################################################
@@ -170,7 +176,7 @@ else
   chmod -R 777 $OUTPUT_DIR
 
   # End
-  echo -e "$CONTAINER  Wrote: `ls -1`"
+  echo -e "$CONTAINER  `cat ${FLYWHEEL_BASE}/.metadata.json`"
   echo -e "$CONTAINER  Done!"
 fi
 

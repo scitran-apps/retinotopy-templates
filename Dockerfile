@@ -30,6 +30,7 @@ RUN apt-get -y update && apt-get -y install\
       zlib1g \
       zlib1g-dev \
       tar \
+      zip \
       git
 
 # FREESURFER CONFIG
@@ -43,8 +44,10 @@ RUN tar -xf occipital-atlas-contents.tar.gz && \
       rm -f occipital-atlas-contents.tar.gz
 
 # Move relevant files over from contents
-RUN mv ${OCADIR}/contents/subjects/fsaverage_sym /opt/freesurfer/subjects/fsaverage_sym && \
-      mv ${OCADIR}/contents/subjects/fsaverage /opt/freesurfer/subjects/fsaverage && \
+RUN rsync -avP ${OCADIR}/contents/subjects/fsaverage_sym /opt/freesurfer/subjects/ && \
+      rm -rf ${OCADIR}/contents/subjects/fsaverage_sym && \
+      rsync -avP ${OCADIR}/contents/subjects/fsaverage /opt/freesurfer/subjects/ && \
+      rm -rf ${OCADIR}/contents/subjects/fsaverage && \
       mv ${OCADIR}/contents/LICENSE.txt / && \
       mv ${OCADIR}/contents/README.md /
 

@@ -3,7 +3,7 @@
 # The container can be exported once it's started with
 repo=scitran
 gear=retinotopy-templates
-version=0.0.1
+version=0.0.2
 outname=export/$gear-$version.tar
 container=$gear
 image=$repo/$gear
@@ -16,5 +16,5 @@ fi
 docker run --name=$container --entrypoint=/bin/true $image
 docker export -o $outname $container
 docker rm $container
-
-openssl dgst -sha384 $outname
+gzip $outname
+openssl dgst -sha384 $outname.gz

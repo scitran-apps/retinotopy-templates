@@ -11,7 +11,7 @@ then cat /README.md
      exit 0
 fi
 
-if [ ! -d "/${1}" ] || [ ! -d "/${1}/surf" ] || [ ! -d "/${1}/mri" ]
+if [ ! -d "${SUBJECTS_DIR}/${1}" ] || [ ! -d "${SUBJECTS_DIR}/${1}/surf" ] || [ ! -d "${SUBJECTS_DIR}/${1}/mri" ]
 then echo "Required inputs not found:"
      exit 1
 fi
@@ -19,13 +19,7 @@ fi
 # Make sure our pythonpath is setup
 export PYTHONPATH="$PYTHONPATH:/opt/neuropythy"
 
-# Link input directory to subjects_dir
-ln -s /${1} ${SUBJECTS_DIR}/${1} || {
-    echo "Could not link /${1} to ${SUBJECTS_DIR}/${1}"
-    exit 1
-}
-
-# okay, we can now apply the templates normally
+# Apply the templates normally
 /opt/share/retinotopy-template/apply_template.sh ${1} || {
   echo "apply_template.sh failed!"
   exit 1
