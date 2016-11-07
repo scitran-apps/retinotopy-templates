@@ -3,7 +3,7 @@
 # The container can be exported once it's started with
 repo=scitran
 gear=retinotopy-templates
-version=0.0.2
+version=0.0.3
 outname=export/$gear-$version.tar
 container=$gear
 image=$repo/$gear
