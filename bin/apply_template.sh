@@ -45,19 +45,19 @@ EOF
 }
 
 function die {
-    echo "${1}"
+    echo "$1"
     exit 1
 }
 
 # Get our subject argument...
-if   [ -z "${1}" ]
+if   [ -z "$1" ]
 then help
-elif [ "${1}" = "--help" ] || [ "${1}" = "-h" ]
+elif [ "$1" = "--help" ] || [ "$1" = "-h" ]
 then help
-elif [ -d "$SUBJECTS_DIR/${1}" ] && [ -d "$SUBJECTS_DIR/${1}/surf" ]
-then SUBPATH="$SUBJECTS_DIR/${1}"
-     SUB="${1}"
-else die "Could not locate FreeSurfer subject: ${1}"
+elif [ -d "$SUBJECTS_DIR/$1" ] && [ -d "$SUBJECTS_DIR/$1/surf" ]
+then SUBPATH="$SUBJECTS_DIR/$1"
+     SUB="$1"
+else die "Could not locate FreeSurfer subject: $1"
 fi
 
 ####################################################################################################
@@ -123,9 +123,16 @@ do LHINFL="$SUBPATH/surf/lh.template_$tmplval.mgz"
    RHINFL="$SUBPATH/surf/rh.template_$tmplval.mgz"
    NATFL="$SUBPATH/mri/native.template_$tmplval.mgz"
    SCAFL="$SUBPATH/mri/scanner.template_$tmplval.mgz"
+   MTD="weighted"
+   DTYPE="float"
+   if [ "$tmplval" = "areas" ]; then MTD="max"; DTYPE="int"; fi
    echo "Constructing native FreeSurfer $tmplval template volume in $NATFL..."
-   surf2ribbon "$SUB" "$LHINFL" "$RHINFL" "$NATFL" \
+   python -m neuropythy.__main__ surface_to_ribbon \
+          -v -t"$DTYPE" -m"$MTD" -l"$LHINFL" -r"$RHINFL" \
+          "$SUB" "$NATFL" \
        || die "Could not construct $tmplval volume templates!"
+   #surf2ribbon "$SUB" "$LHINFL" "$RHINFL" "$NATFL" \
+   #    || die "Could not construct $tmplval volume templates!"
 done
 
 # Then Wang atlas:
@@ -133,9 +140,15 @@ LHINFL="$SUBPATH/surf/lh.wang2015_atlas.mgz"
 RHINFL="$SUBPATH/surf/rh.wang2015_atlas.mgz"
 NATFL="$SUBPATH/mri/native.wang2015_atlas.mgz"
 SCAFL="$SUBPATH/mri/scanner.wang2015_atlas.mgz"
+MTD="max"
+DTYPE="int"
 echo "Constructing native FreeSurfer Wang et al. (2015) volume in $NATFL..."
-surf2ribbon "$SUB" "$LHINFL" "$RHINFL" "$NATFL" \
-    || die "Could not construct Wang volume!"
+python -m neuropythy.__main__ surface_to_ribbon \
+       -v -t"$DTYPE" -m"$MTD" -l"$LHINFL" -r"$RHINFL" \
+       "$SUB" "$NATFL" \
+    || die "Could not construct $tmplval volume templates!"
+#surf2ribbon "$SUB" "$LHINFL" "$RHINFL" "$NATFL" \
+#    || die "Could not construct Wang volume!"
 
 # That's it!
 echo "Finished!"
@@ -143,3 +156,4 @@ echo ""
 echo "To construct volumes oriented in the original T1's orientation (like the rawavg.mgz file),"
 echo "use the following FreeSurfer command:"
 echo " > mri_convert -rl rawavg.mgz native.<volume>.mgz scanner.<volume>.mgz"
+
