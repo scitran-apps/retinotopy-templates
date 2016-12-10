@@ -1,6 +1,6 @@
 # scitran/retinotopy-templates
-Applies the retinotopy templates from Benson et al. (2014) PLOS Comput Biol to
-a *generated* FreeSurfer subject output.
+Runs FreeSurfer's Recon-All and applies the retinotopy templates from Benson et al. (2014) PLOS Comput Biol to
+the *generated* FreeSurfer subject output.
 
 
 ## Atlas of the Occipital Cortex

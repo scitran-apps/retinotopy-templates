@@ -19,6 +19,7 @@ MAINTAINER Michael Perry <lmperry@stanford.edu>
 RUN apt-get -y update && apt-get -y install\
       g++ \
       make \
+      python \
       python2.7 \
       python-dev \
       python-setuptools \
@@ -31,7 +32,12 @@ RUN apt-get -y update && apt-get -y install\
       zlib1g-dev \
       tar \
       zip \
-      git
+      git \
+      gawk \
+      tcsh \
+      perl-modules \
+      libgomp1 \
+      bc
 
 # FREESURFER CONFIG
 COPY license /opt/freesurfer/.license
@@ -76,16 +82,21 @@ RUN mkdir -p ${FLYWHEEL}
 # Copy and configure run script and metadata code
 COPY bin/run \
       bin/parse_config.py \
+      bin/srf2obj \
       manifest.json \
       ${FLYWHEEL}/
 ADD https://raw.githubusercontent.com/scitran/utilities/daf5ebc7dac6dde1941ca2a6588cb6033750e38c/metadata_from_gear_output.py \
       ${FLYWHEEL}/metadata_create.py
 
+# Copy the default config.json file to the container
+COPY bin/config.json ${FLYWHEEL}/default_config.json
+
 # Handle file properties for execution
 RUN chmod +x \
       ${FLYWHEEL}/run \
       ${FLYWHEEL}/parse_config.py \
-      ${FLYWHEEL}/metadata_create.py
+      ${FLYWHEEL}/metadata_create.py \
+      ${FLYWHEEL}/srf2obj
 
 # We run the run_apply_template.sh script on entry.
 ENTRYPOINT ["/flywheel/v0/run"]

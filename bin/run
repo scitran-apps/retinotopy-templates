@@ -45,8 +45,11 @@ ANAT_DIR=$INPUT_DIR/anatomical # Must match input from the manifest
 CONFIG_FILE=${FLYWHEEL_BASE}/config.json
 LOG_FILE=$OUTPUT_DIR/retinotopy-templates_log.txt
 
-SUBJECT_ID=`${FLYWHEEL_BASE}/parse_config.py -s`
+SUBJECT_ID=`${FLYWHEEL_BASE}/parse_config.py -i`
 RECON_ALL_OPTS=`${FLYWHEEL_BASE}/parse_config.py -o`
+CONVERT_SURFACES=`${FLYWHEEL_BASE}/parse_config.py -s`
+CONVERT_VOLUMES=`${FLYWHEEL_BASE}/parse_config.py -n`
+ASEG_CSV=`${FLYWHEEL_BASE}/parse_config.py -a`
 
 # Make and link the directory
 WORK_DIR=/${SUBJECT_ID}
@@ -103,41 +106,68 @@ mri_convert -rl "$SUBJECTS_DIR/${SUBJECT_ID}/mri/rawavg.mgz" \
                 "$SUBJECTS_DIR/${SUBJECT_ID}/mri/scanner.wang2015_atlas.mgz" \
                 2>&1 | tee -a $LOG_FILE
 
+
+##############################################################################
+# Convert the output surface and volume files
+if [ ! -z $CONVERT_SURFACES ]; then
+
+  # Convert selected surfaces in subject/surf to obj in output
+  SURF_DIR=${SUBJECTS_DIR}/${SUBJECT_ID}/surf
+
+  surfaces='lh.pial
+            rh.pial
+            lh.white
+            rh.white
+            rh.inflated
+            lh.inflated'
+
+  echo 'Converting surfaces to object files...' 2>&1 | tee -a $LOG_FILE
+  for i in $surfaces; do
+      mris_convert ${SURF_DIR}/$i ${SURF_DIR}/$i.asc
+      ${FLYWHEEL_BASE}/srf2obj ${SURF_DIR}/$i.asc > ${OUTPUT_DIR}/$i.obj
+  done
+
+fi
+
+# Convert select volumes in subject/mri to nifti:
+if [ ! -z $CONVERT_VOLUMES ]; then:
+  MRI_DIR=${SUBJECTS_DIR}/${SUBJECT_ID}/mri
+  mri_mgz_files='native.template_angle.mgz
+                 native.template_eccen.mgz
+                 native.template_areas.mgz
+                 native.wang2015_atlas.mgz
+                 scanner.template_angle.mgz
+                 scanner.template_eccen.mgz
+                 scanner.template_areas.mgz
+                 scanner.wang2015_atlas.mgz
+                 aparc+aseg.mgz
+                 aparc.a2009s+aseg.mgz
+                 brainmask.mgz
+                 lh.ribbon.mgz
+                 rh.ribbon.mgz
+                 ribbon.mgz
+                 aseg.mgz
+                 orig.mgz
+                 T1.mgz'
+
+  echo 'Converting volumes to nifti files...' 2>&1 | tee -a $LOG_FILE
+  for i in $mri_mgz_files; do
+   mri_convert -i ${MRI_DIR}/$i -o ${OUTPUT_DIR}/`basename $i .mgz`.nii.gz 2>&1 | tee -a $LOG_FILE
+  done
+
+fi
+
 ###############################################################################
-# Convert the output files to nifti and copy to output directory
+# Write aseg stats to a table
 
-echo 'Converting outputs to nifti...'
+if [ ! -z $ASEG_CSV ]; then
+    asegstats2table -i ${SUBJECTS_DIR}/${SUBJECT_ID}/stats/aseg.stats --delimiter comma --tablefile ${OUTPUT_DIR}/aseg_stats_vol_mm3.csv
 
-# Surfaces in subject/surf
-SURF_DIR=${SUBJECTS_DIR}/${SUBJECT_ID}/surf
-surf_mgz_files='lh.template_angle.mgz
-                lh.template_eccen.mgz
-                lh.template_areas.mgz
-                lh.wang2015_atlas.mgz
-                rh.template_angle.mgz
-                rh.template_eccen.mgz
-                rh.template_areas.mgz
-                rh.wang2015_atlas.mgz'
-
-for i in $surf_mgz_files; do
-  mri_convert -i ${SURF_DIR}/$i -o ${OUTPUT_DIR}/`basename $i .mgz`.gii 2>&1 | tee -a $LOG_FILE
-done
-
-# Volumes in subject/mri:
-MRI_DIR=${SUBJECTS_DIR}/${SUBJECT_ID}/mri
-mri_mgz_files='native.template_angle.mgz
-               native.template_eccen.mgz
-               native.template_areas.mgz
-               native.wang2015_atlas.mgz
-               scanner.template_angle.mgz
-               scanner.template_eccen.mgz
-               scanner.template_areas.mgz
-               scanner.wang2015_atlas.mgz'
-
-for i in $mri_mgz_files; do
-  mri_convert -i ${MRI_DIR}/$i -o ${OUTPUT_DIR}/`basename $i .mgz`.nii.gz 2>&1 | tee -a $LOG_FILE
-done
-
+    ## Loop over all stats files and convert to csv (NYI)
+    #for f in `find ${SUBJECTS_DIR}/${SUBJECT_ID}/stats/ -name "*.stats"`; do
+    #    asegstats2table -i ${f} --delimiter comma --tablefile ${OUTPUT_DIR}/`basename ${f}`.csv
+    #done
+fi
 
 ###############################################################################
 # Compress Recon-all output directory

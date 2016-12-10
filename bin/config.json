@@ -1,5 +1,8 @@
 {
       "config": {
-        "subject_id": "retinotopy_templates_subject"
+        "subject_id": "rts000",
+        "convert_surfaces": 1,
+        "convert_volumes": 1,
+        "convert_aseg_stats": 1
     }
 }
