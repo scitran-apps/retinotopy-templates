@@ -126,11 +126,11 @@ if [ ! -z $CONVERT_SURFACES ]; then
       mris_convert ${SURF_DIR}/$i ${SURF_DIR}/$i.asc
       ${FLYWHEEL_BASE}/srf2obj ${SURF_DIR}/$i.asc > ${OUTPUT_DIR}/$i.obj
   done
-
+  echo 'Done.' 2>&1 | tee -a $LOG_FILE
 fi
 
 # Convert select volumes in subject/mri to nifti:
-if [ ! -z $CONVERT_VOLUMES ]; then:
+if [ ! -z $CONVERT_VOLUMES ]; then
   MRI_DIR=${SUBJECTS_DIR}/${SUBJECT_ID}/mri
   mri_mgz_files='native.template_angle.mgz
                  native.template_eccen.mgz
@@ -154,7 +154,7 @@ if [ ! -z $CONVERT_VOLUMES ]; then:
   for i in $mri_mgz_files; do
    mri_convert -i ${MRI_DIR}/$i -o ${OUTPUT_DIR}/`basename $i .mgz`.nii.gz 2>&1 | tee -a $LOG_FILE
   done
-
+  echo 'Done.' 2>&1 | tee -a $LOG_FILE
 fi
 
 ###############################################################################
@@ -172,7 +172,7 @@ fi
 ###############################################################################
 # Compress Recon-all output directory
 
-echo "Compressing outputs..."
+echo "Compressing outputs..." 2>&1 | tee -a $LOG_FILE
 
 # Set file permissions prior to compression
 chmod -R 777 ${WORK_DIR}
@@ -189,7 +189,7 @@ outputs=$(find $OUTPUT_DIR/* -maxdepth 0 -type f)
 # If outputs exist, generate metadata, and exit
 if [[ -z $outputs ]]
 then
-  echo "$CONTAINER  FAILED: No results found in output directory... Exiting"
+  echo "$CONTAINER  FAILED: No results found in output directory... Exiting" 2>&1 | tee -a $LOG_FILE
   exit 1
 else
 
@@ -200,8 +200,8 @@ else
   chmod -R 777 $OUTPUT_DIR
 
   # End
-  echo -e "$CONTAINER  `cat ${OUTPUT_DIR}/.metadata.json`"
-  echo -e "$CONTAINER  Done!"
+  echo -e "$CONTAINER  `cat ${OUTPUT_DIR}/.metadata.json`" 2>&1 | tee -a $LOG_FILE
+  echo -e "$CONTAINER  Done!" 2>&1 | tee -a $LOG_FILE
 fi
 
 exit 0
