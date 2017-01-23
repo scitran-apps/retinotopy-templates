@@ -85,8 +85,6 @@ COPY bin/run \
       bin/srf2obj \
       manifest.json \
       ${FLYWHEEL}/
-ADD https://raw.githubusercontent.com/scitran/utilities/daf5ebc7dac6dde1941ca2a6588cb6033750e38c/metadata_from_gear_output.py \
-      ${FLYWHEEL}/metadata_create.py
 
 # Copy the default config.json file to the container
 COPY bin/config.json ${FLYWHEEL}/default_config.json
@@ -95,7 +93,6 @@ COPY bin/config.json ${FLYWHEEL}/default_config.json
 RUN chmod +x \
       ${FLYWHEEL}/run \
       ${FLYWHEEL}/parse_config.py \
-      ${FLYWHEEL}/metadata_create.py \
       ${FLYWHEEL}/srf2obj
 
 # We run the run_apply_template.sh script on entry.

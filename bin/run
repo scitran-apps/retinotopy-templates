@@ -201,14 +201,10 @@ CONTAINER="[${REPO}/$GEAR]"
     exit 1
   else
 
-    # Create metadata json file ($OUTPUT_DIR/.metadata.json)
-    $FLYWHEEL_BASE/metadata_create.py $OUTPUT_DIR $CONTAINER
-
     # Set permissions for outputs (prevent root only r/w)
     chmod -R 777 $OUTPUT_DIR
 
     # End
-    echo -e "$CONTAINER  `cat ${OUTPUT_DIR}/.metadata.json`"
     echo -e "$CONTAINER  Done!"
   fi
 
