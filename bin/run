@@ -160,7 +160,7 @@ CONTAINER="[${REPO}/$GEAR]"
 
     echo 'Converting volumes to nifti files...'
     for i in $mri_mgz_files; do
-     mri_convert -i ${MRI_DIR}/$i -o ${OUTPUT_DIR}/`basename $i .mgz`.nii.gz
+     mri_convert -i ${MRI_DIR}/$i -o ${OUTPUT_DIR}/${SUBJECT_ID}_`basename $i .mgz`.nii.gz
     done
     echo 'Done.'
   fi
@@ -169,7 +169,7 @@ CONTAINER="[${REPO}/$GEAR]"
   # Write aseg stats to a table
 
   if [ ! -z $ASEG_CSV ]; then
-      asegstats2table -i ${SUBJECTS_DIR}/${SUBJECT_ID}/stats/aseg.stats --delimiter comma --tablefile ${OUTPUT_DIR}/aseg_stats_vol_mm3.csv
+      asegstats2table -i ${SUBJECTS_DIR}/${SUBJECT_ID}/stats/aseg.stats --delimiter comma --tablefile ${OUTPUT_DIR}/${SUBJECT_ID}_aseg_stats_vol_mm3.csv
 
       ## Loop over all stats files and convert to csv (NYI)
       #for f in `find ${SUBJECTS_DIR}/${SUBJECT_ID}/stats/ -name "*.stats"`; do
@@ -185,7 +185,7 @@ CONTAINER="[${REPO}/$GEAR]"
   # Set file permissions prior to compression
   chmod -R 777 ${WORK_DIR}
   cd /
-  zip -r /${OUTPUT_DIR}/${GEAR}_${SUBJECT_ID}`date +"_D%m-%d-%yT%H-%M"`.zip ${SUBJECT_ID}
+  zip -r /${OUTPUT_DIR}/${SUBJECT_ID}_${GEAR}_`date +"_D%m-%d-%yT%H-%M"`.zip ${SUBJECT_ID}
 
 
   ###############################################################################
