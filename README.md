@@ -109,8 +109,8 @@ mri_convert -rl "$SUBJECTS_DIR/bert/mri/rawavg.mgz"            \
 09 - VO2
 10 - PHC1
 11 - PHC2
-12 - MST
-13 - hMT
+12 - TO2
+13 - TO1
 14 - LO2
 15 - LO1
 16 - V3b
