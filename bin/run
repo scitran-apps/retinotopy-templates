@@ -45,6 +45,7 @@ ANAT_DIR=$INPUT_DIR/anatomical # Must match input from the manifest
 CONFIG_FILE=${FLYWHEEL_BASE}/config.json
 LOG_FILE=$OUTPUT_DIR/retinotopy-templates_log.txt
 
+# Parse config file
 SUBJECT_ID=`${FLYWHEEL_BASE}/parse_config.py -i`
 RECON_ALL_OPTS=`${FLYWHEEL_BASE}/parse_config.py -o`
 CONVERT_SURFACES=`${FLYWHEEL_BASE}/parse_config.py -s`
@@ -86,22 +87,22 @@ echo 'Reorienting outputs to scanner space....'
 
 # Make volume files oriented identically to the original T1 used
 # with FreeSurfers recon-all command (scanner orientation).
-mri_convert -rl "$SUBJECTS_DIR/${SUBJECT_ID}/mri/rawavg.mgz" \
+mri_convert -rt nearest -rl "$SUBJECTS_DIR/${SUBJECT_ID}/mri/rawavg.mgz" \
                 "$SUBJECTS_DIR/${SUBJECT_ID}/mri/native.template_angle.mgz" \
                 "$SUBJECTS_DIR/${SUBJECT_ID}/mri/scanner.template_angle.mgz" \
                 2>&1 | tee -a $LOG_FILE
 
-mri_convert -rl "$SUBJECTS_DIR/${SUBJECT_ID}/mri/rawavg.mgz" \
+mri_convert -rt nearest -rl "$SUBJECTS_DIR/${SUBJECT_ID}/mri/rawavg.mgz" \
                 "$SUBJECTS_DIR/${SUBJECT_ID}/mri/native.template_eccen.mgz" \
                 "$SUBJECTS_DIR/${SUBJECT_ID}/mri/scanner.template_eccen.mgz" \
                 2>&1 | tee -a $LOG_FILE
 
-mri_convert -rl "$SUBJECTS_DIR/${SUBJECT_ID}/mri/rawavg.mgz" \
+mri_convert -rt nearest -rl "$SUBJECTS_DIR/${SUBJECT_ID}/mri/rawavg.mgz" \
                 "$SUBJECTS_DIR/${SUBJECT_ID}/mri/native.template_areas.mgz" \
                 "$SUBJECTS_DIR/${SUBJECT_ID}/mri/scanner.template_areas.mgz" \
                 2>&1 | tee -a $LOG_FILE
 
-mri_convert -rl "$SUBJECTS_DIR/${SUBJECT_ID}/mri/rawavg.mgz" \
+mri_convert -rt nearest -rl "$SUBJECTS_DIR/${SUBJECT_ID}/mri/rawavg.mgz" \
                 "$SUBJECTS_DIR/${SUBJECT_ID}/mri/native.wang2015_atlas.mgz" \
                 "$SUBJECTS_DIR/${SUBJECT_ID}/mri/scanner.wang2015_atlas.mgz" \
                 2>&1 | tee -a $LOG_FILE
