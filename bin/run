@@ -30,7 +30,7 @@ export PERL5LIB=/opt/freesurfer/mni/lib/perl5/5.8.5
 export MNI_PERL5LIB=/opt/freesurfer/mni/lib/perl5/5.8.5
 export PATH=/opt/freesurfer/bin:/opt/freesurfer/fsfast/bin:/opt/freesurfer/tktools:/opt/freesurfer/mni/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-# Configure bashrc to source FreeSurferEnv.sh
+# Source FreeSurferEnv.sh
 /bin/bash -c 'source $FREESURFER_HOME/FreeSurferEnv.sh &>/dev/null'
 
 export SUBJECTS_DIR=/opt/freesurfer/subjects
@@ -44,6 +44,7 @@ INPUT_DIR=$FLYWHEEL_BASE/input
 ANAT_DIR=$INPUT_DIR/anatomical # Must match input from the manifest
 CONFIG_FILE=${FLYWHEEL_BASE}/config.json
 LOG_FILE=$OUTPUT_DIR/retinotopy-templates_log.txt
+LICENSE_FILE=${FREESURFER_HOME}/.license
 
 # Parse config file
 SUBJECT_ID=`${FLYWHEEL_BASE}/parse_config.py -i`
@@ -51,6 +52,12 @@ RECON_ALL_OPTS=`${FLYWHEEL_BASE}/parse_config.py -o`
 CONVERT_SURFACES=`${FLYWHEEL_BASE}/parse_config.py -s`
 CONVERT_VOLUMES=`${FLYWHEEL_BASE}/parse_config.py -n`
 ASEG_CSV=`${FLYWHEEL_BASE}/parse_config.py -a`
+
+# If the license file is empty then create from config inputs
+if [[ -z $(cat ${LICENSE_FILE}) ]]; then
+  LICENSE=$(${FLYWHEEL_BASE}/parse_config.py -l)
+  echo -e ${LICENSE} > ${LICENSE_FILE}
+fi
 
 # Make and link the directory
 WORK_DIR=/${SUBJECT_ID}
