@@ -44,6 +44,13 @@ def parse_config(args):
         else:
             print ""
 
+    # Parse config for license elements
+    if args.l:
+        if config['config']['license_key'][0] == "*":
+            license_key = config['config']['license_key']
+        else:
+            license_key = "*" + config['config']['license_key']
+        print config['config']['license_email'] + "\\n" + config['config']['license_number'] + "\\n " + license_key + "\\n"
 
 if __name__ == '__main__':
 
@@ -55,6 +62,7 @@ if __name__ == '__main__':
     ap.add_argument('-s', action='store_true', help='Convert surfaces to obj')
     ap.add_argument('-n', action='store_true', help='Convert volume MGZ to NIfTI')
     ap.add_argument('-a', action='store_true', help='Convert ASEG stats to csv')
+    ap.add_argument('-l', action='store_true', help='Generate License File')
     args = ap.parse_args()
 
     parse_config(args)

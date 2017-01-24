@@ -1,8 +1,11 @@
 {
       "config": {
-        "subject_id": "rts000",
+        "subject_id": "rt_sub000",
         "convert_surfaces": 1,
         "convert_volumes": 1,
-        "convert_aseg_stats": 1
+        "convert_aseg_stats": 1,
+        "license_email": "",
+        "license_number": "",
+        "license_key": ""
     }
 }

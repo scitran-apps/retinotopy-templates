@@ -3,206 +3,211 @@
 # Run occipital-atlas Gear
 # Built to flywheel-v0 spec.
 #
-
+LOG_FILE=/flywheel/v0/output/retinotopy-templates.log
 GEAR=retinotopy-templates
 REPO=scitran
 CONTAINER="[${REPO}/$GEAR]"
 
-echo -e "$CONTAINER  Initiated"
-set -e
+(
+  echo -e "$CONTAINER  Initiated"
+  set -e
 
-###############################################################################
-# Configure Freesurfer ENV
+  ###############################################################################
+  # Configure Freesurfer ENV
 
-export OS Linux=
-export FS_OVERRIDE=0
-export FIX_VERTEX_AREA=
-export FSF_OUTPUT_FORMAT=nii.gz
-export MNI_DIR=/opt/freesurfer/mni
-export LOCAL_DIR=/opt/freesurfer/local
-export FREESURFER_HOME=/opt/freesurfer
-export FSFAST_HOME=/opt/freesurfer/fsfast
-export MINC_BIN_DIR=/opt/freesurfer/mni/bin
-export MINC_LIB_DIR=/opt/freesurfer/mni/lib
-export MNI_DATAPATH=/opt/freesurfer/mni/data
-export FMRI_ANALYSIS_DIR=/opt/freesurfer/fsfast
-export PERL5LIB=/opt/freesurfer/mni/lib/perl5/5.8.5
-export MNI_PERL5LIB=/opt/freesurfer/mni/lib/perl5/5.8.5
-export PATH=/opt/freesurfer/bin:/opt/freesurfer/fsfast/bin:/opt/freesurfer/tktools:/opt/freesurfer/mni/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+  export OS Linux=
+  export FS_OVERRIDE=0
+  export FIX_VERTEX_AREA=
+  export FSF_OUTPUT_FORMAT=nii.gz
+  export MNI_DIR=/opt/freesurfer/mni
+  export LOCAL_DIR=/opt/freesurfer/local
+  export FREESURFER_HOME=/opt/freesurfer
+  export FSFAST_HOME=/opt/freesurfer/fsfast
+  export MINC_BIN_DIR=/opt/freesurfer/mni/bin
+  export MINC_LIB_DIR=/opt/freesurfer/mni/lib
+  export MNI_DATAPATH=/opt/freesurfer/mni/data
+  export FMRI_ANALYSIS_DIR=/opt/freesurfer/fsfast
+  export PERL5LIB=/opt/freesurfer/mni/lib/perl5/5.8.5
+  export MNI_PERL5LIB=/opt/freesurfer/mni/lib/perl5/5.8.5
+  export PATH=/opt/freesurfer/bin:/opt/freesurfer/fsfast/bin:/opt/freesurfer/tktools:/opt/freesurfer/mni/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-# Configure bashrc to source FreeSurferEnv.sh
-/bin/bash -c 'source $FREESURFER_HOME/FreeSurferEnv.sh &>/dev/null'
+  # Source FreeSurferEnv.sh
+  /bin/bash -c 'source $FREESURFER_HOME/FreeSurferEnv.sh &>/dev/null'
 
-export SUBJECTS_DIR=/opt/freesurfer/subjects
+  export SUBJECTS_DIR=/opt/freesurfer/subjects
 
-###############################################################################
-# Configure paths
+  ###############################################################################
+  # Configure paths
 
-FLYWHEEL_BASE=/flywheel/v0
-OUTPUT_DIR=$FLYWHEEL_BASE/output
-INPUT_DIR=$FLYWHEEL_BASE/input
-ANAT_DIR=$INPUT_DIR/anatomical # Must match input from the manifest
-CONFIG_FILE=${FLYWHEEL_BASE}/config.json
-LOG_FILE=$OUTPUT_DIR/retinotopy-templates_log.txt
+  FLYWHEEL_BASE=/flywheel/v0
+  OUTPUT_DIR=$FLYWHEEL_BASE/output
+  INPUT_DIR=$FLYWHEEL_BASE/input
+  ANAT_DIR=$INPUT_DIR/anatomical # Must match input from the manifest
+  CONFIG_FILE=${FLYWHEEL_BASE}/config.json
+  LICENSE_FILE=${FREESURFER_HOME}/.license
 
-# Parse config file
-SUBJECT_ID=`${FLYWHEEL_BASE}/parse_config.py -i`
-RECON_ALL_OPTS=`${FLYWHEEL_BASE}/parse_config.py -o`
-CONVERT_SURFACES=`${FLYWHEEL_BASE}/parse_config.py -s`
-CONVERT_VOLUMES=`${FLYWHEEL_BASE}/parse_config.py -n`
-ASEG_CSV=`${FLYWHEEL_BASE}/parse_config.py -a`
+  # Parse config file
+  SUBJECT_ID=`${FLYWHEEL_BASE}/parse_config.py -i`
+  RECON_ALL_OPTS=`${FLYWHEEL_BASE}/parse_config.py -o`
+  CONVERT_SURFACES=`${FLYWHEEL_BASE}/parse_config.py -s`
+  CONVERT_VOLUMES=`${FLYWHEEL_BASE}/parse_config.py -n`
+  ASEG_CSV=`${FLYWHEEL_BASE}/parse_config.py -a`
 
-# Make and link the directory
-WORK_DIR=/${SUBJECT_ID}
-ln -s ${SUBJECTS_DIR}/${SUBJECT_ID} ${WORK_DIR}
+  # If the license file is empty then create from config inputs
+  if [[ -z $(cat ${LICENSE_FILE}) ]]; then
+    LICENSE=$(${FLYWHEEL_BASE}/parse_config.py -l)
+    echo -e ${LICENSE} > ${LICENSE_FILE}
+  fi
 
-ANATOMICAL=`find ${ANAT_DIR}/* -name "*.nii*"`
+  # Make and link the directory
+  WORK_DIR=/${SUBJECT_ID}
+  ln -s ${SUBJECTS_DIR}/${SUBJECT_ID} ${WORK_DIR}
 
-###############################################################################
-# Freesurfer
+  ANATOMICAL=`find ${ANAT_DIR}/* -name "*.nii*"`
 
-# Run recon-all
-time recon-all -i ${ANATOMICAL} -subjid ${SUBJECT_ID} ${RECON_ALL_OPTS} -all 2>&1 | tee $LOG_FILE
+  ###############################################################################
+  # Freesurfer
 
-# Invert the right hemisphere
-time xhemireg --s ${SUBJECT_ID} 2>&1 | tee -a $LOG_FILE
+  # Run recon-all
+  time recon-all -i ${ANATOMICAL} -subjid ${SUBJECT_ID} ${RECON_ALL_OPTS} -all
 
-# Register the left hemisphere to fsaverage_sym
-time surfreg --s ${SUBJECT_ID} --t fsaverage_sym --lh 2>&1 | tee -a $LOG_FILE
+  # Invert the right hemisphere
+  time xhemireg --s ${SUBJECT_ID}
 
-# Register the inverted right hemisphere to fsaverage_sym
-time surfreg --s ${SUBJECT_ID} --t fsaverage_sym --lh --xhemi 2>&1 | tee -a $LOG_FILE
+  # Register the left hemisphere to fsaverage_sym
+  time surfreg --s ${SUBJECT_ID} --t fsaverage_sym --lh
 
-
-###############################################################################
-# RUN the benson algorithm
-
-echo 'Running Benson Algorithm...'
-time /opt/share/retinotopy-template/run_apply_template.sh ${SUBJECT_ID} 2>&1 | tee -a $LOG_FILE
-
-###############################################################################
-# Orientation to T1
-
-echo 'Reorienting outputs to scanner space....'
-
-# Make volume files oriented identically to the original T1 used
-# with FreeSurfers recon-all command (scanner orientation).
-mri_convert -rt nearest -rl "$SUBJECTS_DIR/${SUBJECT_ID}/mri/rawavg.mgz" \
-                "$SUBJECTS_DIR/${SUBJECT_ID}/mri/native.template_angle.mgz" \
-                "$SUBJECTS_DIR/${SUBJECT_ID}/mri/scanner.template_angle.mgz" \
-                2>&1 | tee -a $LOG_FILE
-
-mri_convert -rt nearest -rl "$SUBJECTS_DIR/${SUBJECT_ID}/mri/rawavg.mgz" \
-                "$SUBJECTS_DIR/${SUBJECT_ID}/mri/native.template_eccen.mgz" \
-                "$SUBJECTS_DIR/${SUBJECT_ID}/mri/scanner.template_eccen.mgz" \
-                2>&1 | tee -a $LOG_FILE
-
-mri_convert -rt nearest -rl "$SUBJECTS_DIR/${SUBJECT_ID}/mri/rawavg.mgz" \
-                "$SUBJECTS_DIR/${SUBJECT_ID}/mri/native.template_areas.mgz" \
-                "$SUBJECTS_DIR/${SUBJECT_ID}/mri/scanner.template_areas.mgz" \
-                2>&1 | tee -a $LOG_FILE
-
-mri_convert -rt nearest -rl "$SUBJECTS_DIR/${SUBJECT_ID}/mri/rawavg.mgz" \
-                "$SUBJECTS_DIR/${SUBJECT_ID}/mri/native.wang2015_atlas.mgz" \
-                "$SUBJECTS_DIR/${SUBJECT_ID}/mri/scanner.wang2015_atlas.mgz" \
-                2>&1 | tee -a $LOG_FILE
+  # Register the inverted right hemisphere to fsaverage_sym
+  time surfreg --s ${SUBJECT_ID} --t fsaverage_sym --lh --xhemi
 
 
-##############################################################################
-# Convert the output surface and volume files
-if [ ! -z $CONVERT_SURFACES ]; then
+  ###############################################################################
+  # RUN the benson algorithm
 
-  # Convert selected surfaces in subject/surf to obj in output
-  SURF_DIR=${SUBJECTS_DIR}/${SUBJECT_ID}/surf
+  echo 'Running Benson Algorithm...'
+  time /opt/share/retinotopy-template/run_apply_template.sh ${SUBJECT_ID}
 
-  surfaces='lh.pial
-            rh.pial
-            lh.white
-            rh.white
-            rh.inflated
-            lh.inflated'
+  ###############################################################################
+  # Orientation to T1
 
-  echo 'Converting surfaces to object files...' 2>&1 | tee -a $LOG_FILE
-  for i in $surfaces; do
-      mris_convert ${SURF_DIR}/$i ${SURF_DIR}/$i.asc
-      ${FLYWHEEL_BASE}/srf2obj ${SURF_DIR}/$i.asc > ${OUTPUT_DIR}/$i.obj
-  done
-  echo 'Done.' 2>&1 | tee -a $LOG_FILE
-fi
+  echo 'Reorienting outputs to scanner space....'
 
-# Convert select volumes in subject/mri to nifti:
-if [ ! -z $CONVERT_VOLUMES ]; then
-  MRI_DIR=${SUBJECTS_DIR}/${SUBJECT_ID}/mri
-  mri_mgz_files='native.template_angle.mgz
-                 native.template_eccen.mgz
-                 native.template_areas.mgz
-                 native.wang2015_atlas.mgz
-                 scanner.template_angle.mgz
-                 scanner.template_eccen.mgz
-                 scanner.template_areas.mgz
-                 scanner.wang2015_atlas.mgz
-                 aparc+aseg.mgz
-                 aparc.a2009s+aseg.mgz
-                 brainmask.mgz
-                 lh.ribbon.mgz
-                 rh.ribbon.mgz
-                 ribbon.mgz
-                 aseg.mgz
-                 orig.mgz
-                 T1.mgz'
-
-  echo 'Converting volumes to nifti files...' 2>&1 | tee -a $LOG_FILE
-  for i in $mri_mgz_files; do
-   mri_convert -i ${MRI_DIR}/$i -o ${OUTPUT_DIR}/`basename $i .mgz`.nii.gz 2>&1 | tee -a $LOG_FILE
-  done
-  echo 'Done.' 2>&1 | tee -a $LOG_FILE
-fi
-
-###############################################################################
-# Write aseg stats to a table
-
-if [ ! -z $ASEG_CSV ]; then
-    asegstats2table -i ${SUBJECTS_DIR}/${SUBJECT_ID}/stats/aseg.stats --delimiter comma --tablefile ${OUTPUT_DIR}/aseg_stats_vol_mm3.csv
-
-    ## Loop over all stats files and convert to csv (NYI)
-    #for f in `find ${SUBJECTS_DIR}/${SUBJECT_ID}/stats/ -name "*.stats"`; do
-    #    asegstats2table -i ${f} --delimiter comma --tablefile ${OUTPUT_DIR}/`basename ${f}`.csv
-    #done
-fi
-
-###############################################################################
-# Compress Recon-all output directory
-
-echo "Compressing outputs..." 2>&1 | tee -a $LOG_FILE
-
-# Set file permissions prior to compression
-chmod -R 777 ${WORK_DIR}
-cd /
-zip -r /${OUTPUT_DIR}/${GEAR}_${SUBJECT_ID}`date +"_D%m-%d-%yT%H-%M"`.zip ${SUBJECT_ID}
+  # Make volume files oriented identically to the original T1 used
+  # with FreeSurfers recon-all command (scanner orientation).
+  mri_convert -rt nearest -rl "$SUBJECTS_DIR/${SUBJECT_ID}/mri/rawavg.mgz" \
+                  "$SUBJECTS_DIR/${SUBJECT_ID}/mri/native.template_angle.mgz" \
+                  "$SUBJECTS_DIR/${SUBJECT_ID}/mri/scanner.template_angle.mgz"
 
 
-###############################################################################
-# FINISH
+  mri_convert -rt nearest -rl "$SUBJECTS_DIR/${SUBJECT_ID}/mri/rawavg.mgz" \
+                  "$SUBJECTS_DIR/${SUBJECT_ID}/mri/native.template_eccen.mgz" \
+                  "$SUBJECTS_DIR/${SUBJECT_ID}/mri/scanner.template_eccen.mgz"
 
-# Get a list of the files in the output directory
-outputs=$(find $OUTPUT_DIR/* -maxdepth 0 -type f)
 
-# If outputs exist, generate metadata, and exit
-if [[ -z $outputs ]]
-then
-  echo "$CONTAINER  FAILED: No results found in output directory... Exiting" 2>&1 | tee -a $LOG_FILE
-  exit 1
-else
+  mri_convert -rt nearest -rl "$SUBJECTS_DIR/${SUBJECT_ID}/mri/rawavg.mgz" \
+                  "$SUBJECTS_DIR/${SUBJECT_ID}/mri/native.template_areas.mgz" \
+                  "$SUBJECTS_DIR/${SUBJECT_ID}/mri/scanner.template_areas.mgz"
 
-  # Create metadata json file ($OUTPUT_DIR/.metadata.json)
-  $FLYWHEEL_BASE/metadata_create.py $OUTPUT_DIR $CONTAINER
 
-  # Set permissions for outputs (prevent root only r/w)
-  chmod -R 777 $OUTPUT_DIR
+  mri_convert -rt nearest -rl "$SUBJECTS_DIR/${SUBJECT_ID}/mri/rawavg.mgz" \
+                  "$SUBJECTS_DIR/${SUBJECT_ID}/mri/native.wang2015_atlas.mgz" \
+                  "$SUBJECTS_DIR/${SUBJECT_ID}/mri/scanner.wang2015_atlas.mgz"
 
-  # End
-  echo -e "$CONTAINER  `cat ${OUTPUT_DIR}/.metadata.json`" 2>&1 | tee -a $LOG_FILE
-  echo -e "$CONTAINER  Done!" 2>&1 | tee -a $LOG_FILE
-fi
 
-exit 0
+
+  ##############################################################################
+  # Convert the output surface and volume files
+  if [ ! -z $CONVERT_SURFACES ]; then
+
+    # Convert selected surfaces in subject/surf to obj in output
+    SURF_DIR=${SUBJECTS_DIR}/${SUBJECT_ID}/surf
+
+    surfaces='lh.pial
+              rh.pial
+              lh.white
+              rh.white
+              rh.inflated
+              lh.inflated'
+
+    echo 'Converting surfaces to object files...'
+    for i in $surfaces; do
+        mris_convert ${SURF_DIR}/$i ${SURF_DIR}/$i.asc
+        ${FLYWHEEL_BASE}/srf2obj ${SURF_DIR}/$i.asc > ${OUTPUT_DIR}/${SUBJECT_ID}_$i.obj
+    done
+    echo 'Done.'
+  fi
+
+  # Convert select volumes in subject/mri to nifti:
+  if [ ! -z $CONVERT_VOLUMES ]; then
+    MRI_DIR=${SUBJECTS_DIR}/${SUBJECT_ID}/mri
+    mri_mgz_files='native.template_angle.mgz
+                   native.template_eccen.mgz
+                   native.template_areas.mgz
+                   native.wang2015_atlas.mgz
+                   scanner.template_angle.mgz
+                   scanner.template_eccen.mgz
+                   scanner.template_areas.mgz
+                   scanner.wang2015_atlas.mgz
+                   aparc+aseg.mgz
+                   aparc.a2009s+aseg.mgz
+                   brainmask.mgz
+                   lh.ribbon.mgz
+                   rh.ribbon.mgz
+                   ribbon.mgz
+                   aseg.mgz
+                   orig.mgz
+                   T1.mgz'
+
+    echo 'Converting volumes to nifti files...'
+    for i in $mri_mgz_files; do
+     mri_convert -i ${MRI_DIR}/$i -o ${OUTPUT_DIR}/${SUBJECT_ID}_`basename $i .mgz`.nii.gz
+    done
+    echo 'Done.'
+  fi
+
+  ###############################################################################
+  # Write aseg stats to a table
+
+  if [ ! -z $ASEG_CSV ]; then
+      asegstats2table -i ${SUBJECTS_DIR}/${SUBJECT_ID}/stats/aseg.stats --delimiter comma --tablefile ${OUTPUT_DIR}/${SUBJECT_ID}_aseg_stats_vol_mm3.csv
+
+      ## Loop over all stats files and convert to csv (NYI)
+      #for f in `find ${SUBJECTS_DIR}/${SUBJECT_ID}/stats/ -name "*.stats"`; do
+      #    asegstats2table -i ${f} --delimiter comma --tablefile ${OUTPUT_DIR}/`basename ${f}`.csv
+      #done
+  fi
+
+  ###############################################################################
+  # Compress Recon-all output directory
+
+  echo "Compressing outputs..."
+
+  # Set file permissions prior to compression
+  chmod -R 777 ${WORK_DIR}
+  cd /
+  zip -r /${OUTPUT_DIR}/${SUBJECT_ID}_${GEAR}_`date +"_D%m-%d-%yT%H-%M"`.zip ${SUBJECT_ID}
+
+
+  ###############################################################################
+  # FINISH
+
+  # Get a list of the files in the output directory
+  outputs=$(find $OUTPUT_DIR/* -maxdepth 0 -type f)
+
+  # If outputs exist, generate metadata, and exit
+  if [[ -z $outputs ]]
+  then
+    echo "$CONTAINER  FAILED: No results found in output directory... Exiting"
+    exit 1
+  else
+
+    # Set permissions for outputs (prevent root only r/w)
+    chmod -R 777 $OUTPUT_DIR
+
+    # End
+    echo -e "$CONTAINER  Done!"
+  fi
+
+  exit 0
+
+) 2>&1 | tee $LOG_FILE
