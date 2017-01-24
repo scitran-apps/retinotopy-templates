@@ -132,7 +132,7 @@ CONTAINER="[${REPO}/$GEAR]"
     echo 'Converting surfaces to object files...'
     for i in $surfaces; do
         mris_convert ${SURF_DIR}/$i ${SURF_DIR}/$i.asc
-        ${FLYWHEEL_BASE}/srf2obj ${SURF_DIR}/$i.asc > ${OUTPUT_DIR}/$i.obj
+        ${FLYWHEEL_BASE}/srf2obj ${SURF_DIR}/$i.asc > ${OUTPUT_DIR}/${SUBJECT_ID}_$i.obj
     done
     echo 'Done.'
   fi
