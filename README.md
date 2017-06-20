@@ -22,8 +22,7 @@ Noah C. Benson &lt;<nben@nyu.edu>&gt;
 This docker can be run with the following command:
 
 ```bash
-docker run -ti --rm -v /path/to/your/freesurfer/subject:/input \
-       scitran/retinotopy-templates
+docker run -v /<INPUT_DIRECTORY>:/flywheel/v0/input/anatomical -v <OUTPUT_DIRECTORY>:/flywheel/v0/output scitran/retinotopy-templates
 ```
 
 In the above example, the "/path/to/your/freesurfer/subject" is the path to an
